@@ -33,7 +33,38 @@ class FWUPDInterface(ServiceInterface):
             'OnlyTrusted': Variant('b', True),
             # anything from here onwards is not shown as properties, they are used by methods instead,
             'Devices': Variant('aa{sv}', []),
-            'Plugins': Variant('aa{sv}', [{'Name': Variant('s', 'hybris')}])
+            'Plugins': Variant('aa{sv}', [{'Name': Variant('s', 'hybris')}]),
+            'Metadata': Variant('a{ss}', {
+                    'CompileVersion(org.freedesktop.fwupd)': '1.9.5',
+                    'DistroId': '',
+                    'KernelCmdline': '',
+                    'HostBaseboardProduct': '',
+                    'CompileVersion(com.hughsie.libxmlb)': '',
+                    'CompileVersion(com.hughsie.libjcat)': '',
+                    'HostBiosVendor': '',
+                    'HostBaseboardManufacturer': '',
+                    'RuntimeVersion(org.freedesktop.fwupd-efi)': '1.4',
+                    'HostFirmwareMajorRelease': '01',
+                    'KernelName': 'Linux',
+                    'HostProduct': '',
+                    'BootTime': '',
+                    'CpuModel': '',
+                    'CompileVersion(org.freedesktop.gusb)': '0.4.5',
+                    'FwupdSupported': 'True',
+                    'KernelVersion': '',
+                    'DistroName': '',
+                    'RuntimeVersion(com.dell.libsmbios)': '2.4',
+                    'DistroPrettyName': '',
+                    'RuntimeVersion(org.freedesktop.gusb)': '0.4.5',
+                    'HostVendor': '',
+                    'HostFamily': '',
+                    'CpuArchitecture': '',
+                    'RuntimeVersion(org.kernel)': '',
+                    'RuntimeVersion(org.freedesktop.fwupd)': '1.9.5',
+                    'DistroVersion': '',
+                    'HostSku': ''
+                }
+            )
         }
 
         self.set_props()
@@ -134,7 +165,7 @@ class FWUPDInterface(ServiceInterface):
                     arr_sensor = {
                         'DeviceId': Variant('s', '1'),
                         'Name': Variant('s', sensor_name),
-                        'Vendor': Variant('s', f'{sensor_vendor}' if sensor_vendor != '' else ''),
+                        'Vendor': Variant('s', sensor_vendor if sensor_vendor != '' else ''),
                         'Version': Variant('s', sensor_ver if sensor_ver != '' else '1'),
                         'Plugin': Variant('s', 'hybris'),
                         'Protocol': Variant('s', 'hybris'),
@@ -143,6 +174,24 @@ class FWUPDInterface(ServiceInterface):
                     }
 
                     self.props['Devices'].value.append(arr_sensor)
+
+        pci_dev = self.parse_pci_devices()
+        if pci_dev:
+            for device in pci_dev:
+                # print(f"Vendor: {device['vendor_name']}, Device: {device['device_name']}")
+                pci_array = {
+                    'DeviceId': Variant('s', '1'),
+                    'Name': Variant('s', device['device_name']),
+                    'Vendor': Variant('s', device['vendor_name'] if device['vendor_name'] != '' else ''),
+                    'VendorId': Variant('s', device['vendor_id'] if device['vendor_id'] != '' else ''),
+                    'Version': Variant('s', device['version']),
+                    'Plugin': Variant('s', 'hybris'),
+                    'Protocol': Variant('s', 'hybris'),
+                    'Flags': Variant('t', 2),
+                    'Serial': Variant('s','')
+                }
+
+                self.props['Devices'].value.append(pci_array)
 
     @dbus_property(access=PropertyAccess.READ)
     async def DaemonVersion(self) -> 's':
@@ -231,7 +280,7 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def GetReportMetadata(self) -> 'a{ss}':
-        return []
+        return self.props['Metadata'].value
 
     @method()
     def SetHints(self, hints: 'a{ss}'):
@@ -331,7 +380,7 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def Quit(self):
-        pass
+        pass # TODO: implement
 
     @method()
     def EmulationLoad(self, data: 'ay'):
@@ -363,6 +412,67 @@ class FWUPDInterface(ServiceInterface):
                     return line.split('=')[1].strip()
 
         return ''
+
+    def parse_pci_ids(self, vendor_id, device_id):
+        pci_ids_path = '/usr/share/misc/pci.ids'
+        vendor_name = None
+        device_name = None
+        with open(pci_ids_path, 'r') as file:
+            vendor_section = False
+            for line in file:
+                if line.startswith(vendor_id.lower()):
+                    vendor_name = line.split(' ', 1)[1].strip()
+                    vendor_section = True
+                elif vendor_section and line.startswith('\t' + device_id.lower()):
+                    device_name = line.split(' ', 1)[1].strip()
+                    break
+                elif not line.startswith('\t') and not line.startswith('#'):
+                    vendor_section = False
+        return vendor_name, device_name
+
+    def parse_pci_devices(self):
+        pci_devices = []
+        sys_bus_pci_path = '/sys/bus/pci/devices/'
+
+        if not os.path.exists(sys_bus_pci_path):
+            return ""
+
+        for device_folder in os.listdir(sys_bus_pci_path):
+            device_path = os.path.join(sys_bus_pci_path, device_folder)
+            device_info = {
+                'vendor_id': '',
+                'device_id': '',
+                'vendor_name': '',
+                'device_name': '',
+                'version': ''
+            }
+
+            try:
+                with open(os.path.join(device_path, 'vendor'), 'r') as file:
+                    device_info['vendor_id'] = file.read().strip()[2:]  # Remove leading '0x'
+            except FileNotFoundError:
+                pass
+
+            try:
+                with open(os.path.join(device_path, 'device'), 'r') as file:
+                    device_info['device_id'] = file.read().strip()[2:]  # Remove leading '0x'
+            except FileNotFoundError:
+                pass
+
+            try:
+                with open(os.path.join(device_path, 'revision'), 'r') as file:
+                    device_info['version'] = str(int(file.read().strip(), 16))
+            except FileNotFoundError:
+                device_info['version'] = '1'
+
+            vendor_name, device_name = self.parse_pci_ids(device_info['vendor_id'], device_info['device_id'])
+            device_info['vendor_name'] = vendor_name if vendor_name else device_info['vendor_id']
+            device_info['device_name'] = device_name if device_name else device_info['device_id']
+            device_info['version'] = device_info['version'] if device_info['version'] else '1'
+
+            pci_devices.append(device_info)
+
+        return pci_devices
 
 async def main():
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
