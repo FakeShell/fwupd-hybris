@@ -8,8 +8,11 @@ from dbus_next.service import (ServiceInterface,
 from dbus_next.constants import PropertyAccess
 from dbus_next import Variant, DBusError, BusType
 
+import platform
 import asyncio
+import psutil
 import dbus
+import sys
 import os
 import re
 
@@ -35,34 +38,28 @@ class FWUPDInterface(ServiceInterface):
             'Devices': Variant('aa{sv}', []),
             'Plugins': Variant('aa{sv}', [{'Name': Variant('s', 'hybris')}]),
             'Metadata': Variant('a{ss}', {
-                    'CompileVersion(org.freedesktop.fwupd)': '1.9.5',
+                    'CompileVersion(org.freedesktop.fwupd)': '1.9.12',
                     'DistroId': '',
                     'KernelCmdline': '',
-                    'HostBaseboardProduct': '',
-                    'CompileVersion(com.hughsie.libxmlb)': '',
-                    'CompileVersion(com.hughsie.libjcat)': '',
-                    'HostBiosVendor': '',
-                    'HostBaseboardManufacturer': '',
-                    'RuntimeVersion(org.freedesktop.fwupd-efi)': '1.4',
+                    'CompileVersion(com.hughsie.libxmlb)': '0.3.14',
+                    'CompileVersion(com.hughsie.libjcat)': '0.2.0',
                     'HostFirmwareMajorRelease': '01',
                     'KernelName': 'Linux',
+                    'DisplayState': 'connected',
                     'HostProduct': '',
                     'BootTime': '',
-                    'CpuModel': '',
                     'CompileVersion(org.freedesktop.gusb)': '0.4.5',
                     'FwupdSupported': 'True',
                     'KernelVersion': '',
                     'DistroName': '',
-                    'RuntimeVersion(com.dell.libsmbios)': '2.4',
                     'DistroPrettyName': '',
                     'RuntimeVersion(org.freedesktop.gusb)': '0.4.5',
+                    'RuntimeVersion(com.hughsie.libjcat)': '0.2.0',
                     'HostVendor': '',
                     'HostFamily': '',
                     'CpuArchitecture': '',
                     'RuntimeVersion(org.kernel)': '',
-                    'RuntimeVersion(org.freedesktop.fwupd)': '1.9.5',
-                    'DistroVersion': '',
-                    'HostSku': ''
+                    'RuntimeVersion(org.freedesktop.fwupd)': '1.9.5'
                 }
             )
         }
@@ -192,6 +189,36 @@ class FWUPDInterface(ServiceInterface):
                 }
 
                 self.props['Devices'].value.append(pci_array)
+
+        with open('/proc/cmdline', 'r') as file:
+            cmdline = file.read().strip()
+
+        self.props['Metadata'].value['KernelCmdline'] = cmdline
+
+        distro_id = self.parse_os_release('ID')
+        distro_name = self.parse_os_release('NAME')
+        distro_pretty_name = self.parse_os_release('PRETTY_NAME')
+
+        if distro_id is not None:
+            self.props['Metadata'].value['DistroId'] = distro_id
+        if distro_name is not None:
+            self.props['Metadata'].value['DistroName'] = distro_name
+        if distro_pretty_name is not None:
+            self.props['Metadata'].value['DistroPrettyName'] = distro_pretty_name
+        if vendor:
+            self.props['Metadata'].value['HostVendor'] = vendor
+        if codename:
+            self.props['Metadata'].value['HostProduct'] = codename
+
+        kernel_version = platform.release()
+        self.props['Metadata'].value['KernelVersion'] = kernel_version
+        self.props['Metadata'].value['RuntimeVersion(org.kernel)'] = kernel_version
+        cpu_arch = platform.machine()
+        self.props['Metadata'].value['CpuArchitecture'] = cpu_arch
+        self.props['Metadata'].value['BootTime'] = str(int(psutil.boot_time()))
+
+        dt_compat = self.extract_dt_compat()
+        self.props['Metadata'].value['HostFamily'] = dt_compat
 
     @dbus_property(access=PropertyAccess.READ)
     async def DaemonVersion(self) -> 's':
@@ -380,7 +407,7 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def Quit(self):
-        pass # TODO: implement
+        sys.exit(0)
 
     @method()
     def EmulationLoad(self, data: 'ay'):
@@ -473,6 +500,23 @@ class FWUPDInterface(ServiceInterface):
             pci_devices.append(device_info)
 
         return pci_devices
+
+    def parse_os_release(self, key):
+        with open('/etc/os-release', 'r') as file:
+            for line in file:
+                if line.startswith(key + '='):
+                    value = line.split('=', 1)[1].strip().strip('"').strip("'")
+                    return value
+        return None
+
+    def extract_dt_compat(self):
+        file_path = '/sys/firmware/devicetree/base/compatible'
+        with open(file_path, 'rb') as file:
+            content = file.read()
+
+        output = content.replace(b'\x00', b'\n').decode('utf-8').strip()
+
+        return output.splitlines()[-1]
 
 async def main():
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
