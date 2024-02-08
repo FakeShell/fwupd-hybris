@@ -279,15 +279,18 @@ class FWUPDInterface(ServiceInterface):
     # anything from here onwards is mostly useless, implemented for sake of completeness
     @method()
     def GetReleases(self, device_id: 's') -> 'aa{sv}':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NothingToDo', 'No releases found')
 
     @method()
     def GetDowngrades(self, device_id: 's') -> 'aa{sv}':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NothingToDo', 'No releases found')
 
     @method()
     def GetUpgrades(self, device_id: 's') -> 'aa{sv}':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NothingToDo', 'No releases found')
 
     @method()
     def GetDetails(self, handle: 'h') -> 'aa{sv}':
@@ -319,19 +322,23 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def Verify(self, id: 's'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.Internal', f'invalid device ID: {id}')
 
     @method()
     def Unlock(self, id: 's'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.Internal', f'invalid device ID: {id}')
 
     @method()
     def Activate(self, id: 's'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.Internal', f'invalid device ID: {id}')
 
     @method()
     def GetResults(self, id: 's') -> 'a{sv}':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NothingToDo', f'Failed to find {id} in history database: No devices found')
 
     @method()
     def GetRemotes(self) -> 'aa{sv}':
@@ -359,7 +366,8 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def ClearResults(self, id: 's'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NothingToDo', f'Failed to find {id} in history database: No devices found')
 
     @method()
     def ModifyDevice(self, device_id: 's', key: 's', value: 's'):
