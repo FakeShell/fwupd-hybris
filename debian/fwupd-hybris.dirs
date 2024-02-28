@@ -1,0 +1,2 @@
+/usr/libexec/fwupd/
+/usr/lib/systemd/system/fwupd.service.d/

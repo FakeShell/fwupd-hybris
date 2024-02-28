@@ -1,0 +1,2 @@
+fwupd-hybris /usr/libexec/fwupd/
+10-hybris.conf /usr/lib/systemd/system/fwupd.service.d/
