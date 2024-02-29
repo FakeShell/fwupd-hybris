@@ -208,6 +208,22 @@ class FWUPDInterface(ServiceInterface):
 
                 self.props['Devices'].value.append(usb_array)
 
+        scsi_dev = self.parse_scsi_devices()
+        if scsi_dev:
+            for device in scsi_dev:
+                # print(f"Vendor: {device['vendor_name']}, Device: {device['device_name']}")
+                scsi_array = {
+                    'DeviceId': Variant('s', '1'),
+                    'Name': Variant('s', device['device']),
+                    'Vendor': Variant('s', device['vendor']),
+                    'Version': Variant('s', device['version']),
+                    'Plugin': Variant('s', 'hybris'),
+                    'Protocol': Variant('s', 'hybris'),
+                    'Flags': Variant('t', 7)
+                }
+
+                self.props['Devices'].value.append(scsi_array)
+
         with open('/proc/cmdline', 'r') as file:
             cmdline = file.read().strip()
 
@@ -585,6 +601,49 @@ class FWUPDInterface(ServiceInterface):
             usb_devices.append(device_info)
 
         return usb_devices
+
+    def parse_scsi_devices(self):
+        scsi_devices = []
+        sys_scsi_generic_path = '/sys/class/scsi_generic/'
+
+        if not os.path.exists(sys_scsi_generic_path):
+            return ""
+
+        for device_folder in os.listdir(sys_scsi_generic_path):
+            device_path = os.path.join(sys_scsi_generic_path, device_folder, 'device')
+            device_info = {
+                'vendor': '',
+                'device': '',
+                'version': ''
+            }
+
+            try:
+                with open(os.path.join(device_path, 'vendor'), 'r') as file:
+                    device_info['vendor'] = file.read().strip()
+            except FileNotFoundError:
+                pass
+
+            try:
+                with open(os.path.join(device_path, 'model'), 'r') as file:
+                    device_info['device'] = file.read().strip()
+            except FileNotFoundError:
+                pass
+
+            try:
+                with open(os.path.join(device_path, 'rev'), 'r') as file:
+                    device_info['version'] = file.read().strip()
+            except FileNotFoundError:
+                pass
+
+            if not device_info['vendor'] or not device_info['device']:
+                continue
+
+            device_info['version'] = device_info['version'] if device_info['version'] else '1'
+
+            if not any(d['vendor'] == device_info['vendor'] and d['device'] == device_info['device'] and d['version'] == device_info['version'] for d in scsi_devices):
+                scsi_devices.append(device_info)
+
+        return scsi_devices
 
     def parse_os_release(self, key):
         with open('/etc/os-release', 'r') as file:
