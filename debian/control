@@ -12,5 +12,7 @@ Architecture: any
 Depends: ${misc:Depends},
          python3,
          python3-psutil,
-         libgbinder-tools
+         libgbinder-tools,
+         pci.ids,
+         usb.ids
 Description: daemon that overrides fwupd to work with hybris devices
