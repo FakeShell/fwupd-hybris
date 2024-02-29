@@ -328,19 +328,23 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def GetDetails(self, handle: 'h') -> 'aa{sv}':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NothingToDo', 'No releases found')
 
     @method()
     def GetHistory(self) -> 'aa{sv}':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NothingToDo', 'No history')
 
     @method()
     def GetHostSecurityAttrs(self) -> 'aa{sv}':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NotSupported', f'HSI support not enabled')
 
     @method()
     def GetHostSecurityEvents(self, limit: 'u') -> 'aa{sv}':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NotSupported', f'HSI support not enabled')
 
     @method()
     def GetReportMetadata(self) -> 'a{ss}':
@@ -352,7 +356,8 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def Install(self, id: 's', handle: 'h', options: 'a{sv}'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.Internal', f'unsupported feature')
 
     @method()
     def Verify(self, id: 's'):
@@ -376,7 +381,8 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def GetRemotes(self) -> 'aa{sv}':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.Internal', f'No remotes configured')
 
     @method()
     def GetApprovedFirmware(self) -> 'as':
@@ -405,19 +411,23 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def ModifyDevice(self, device_id: 's', key: 's', value: 's'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NotSupported', f'key {key} not supported')
 
     @method()
     def ModifyConfig(self, key: 's', value: 's'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NotFound', f'key {key} not supported for [{value}]')
 
     @method()
     def UpdateMetadata(self, remote_id: 's', data: 'h', signature: 'h'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NotFound', f'remote {remote_id} not found')
 
     @method()
     def ModifyRemote(self, remote_id: 's', key: 's', value: 's'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NotFound', f'key {key} not supported')
 
     @method()
     def FixHostSecurityAttr(self, appstream_id: 's'):
@@ -445,7 +455,8 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def Uninhibit(self, inhibit_id: 's'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NotFound', f'Cannot find inhibit ID')
 
     @method()
     def Quit(self):
@@ -453,11 +464,13 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def EmulationLoad(self, data: 'ay'):
-        pass
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NotSupported', f'emulation is not allowed from config')
 
     @method()
     def EmulationSave(self) -> 'ay':
-        return []
+        # useless, this script is only used for debugging and logging for now.
+        raise DBusError('org.freedesktop.fwupd.NotSupported', f'emulation is not allowed from config')
 
     def extract_prop(self, prop):
         prop_files = [
