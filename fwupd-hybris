@@ -103,7 +103,7 @@ class FWUPDInterface(ServiceInterface):
                 'Version': Variant('s', '1'),
                 'Plugin': Variant('s', 'hybris'),
                 'Protocol': Variant('s', 'hybris'),
-                'Flags': Variant('t', 2),
+                'Flags': Variant('t', 7),
                 'Serial': Variant('s', bootloader_serialno if bootloader_serialno != '' else '')
             }
 
@@ -133,7 +133,7 @@ class FWUPDInterface(ServiceInterface):
                 'Version': Variant('s', modem_ver if modem_ver != '' else '1'),
                 'Plugin': Variant('s', 'hybris'),
                 'Protocol': Variant('s', 'hybris'),
-                'Flags': Variant('t', 2),
+                'Flags': Variant('t', 7),
                 'Serial': Variant('s', modem_serial if modem_serial != '' else '')
             }
 
@@ -166,7 +166,7 @@ class FWUPDInterface(ServiceInterface):
                         'Version': Variant('s', sensor_ver if sensor_ver != '' else '1'),
                         'Plugin': Variant('s', 'hybris'),
                         'Protocol': Variant('s', 'hybris'),
-                        'Flags': Variant('t', 2),
+                        'Flags': Variant('t', 7),
                         'Serial': Variant('s', sensor_id if sensor_id != '' else '')
                     }
 
@@ -184,7 +184,7 @@ class FWUPDInterface(ServiceInterface):
                     'Version': Variant('s', device['version']),
                     'Plugin': Variant('s', 'hybris'),
                     'Protocol': Variant('s', 'hybris'),
-                    'Flags': Variant('t', 2),
+                    'Flags': Variant('t', 7),
                     'Serial': Variant('s','')
                 }
 
@@ -202,7 +202,7 @@ class FWUPDInterface(ServiceInterface):
                     'Version': Variant('s', device['version']),
                     'Plugin': Variant('s', 'hybris'),
                     'Protocol': Variant('s', 'hybris'),
-                    'Flags': Variant('t', 2),
+                    'Flags': Variant('t', 7),
                     'Serial': Variant('s', device['serial'] if device['serial'] != '' else '')
                 }
 
