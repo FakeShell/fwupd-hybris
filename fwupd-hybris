@@ -190,6 +190,24 @@ class FWUPDInterface(ServiceInterface):
 
                 self.props['Devices'].value.append(pci_array)
 
+        usb_dev = self.parse_usb_devices()
+        if usb_dev:
+            for device in usb_dev:
+                # print(f"Vendor: {device['vendor_name']}, Device: {device['device_name']}")
+                usb_array = {
+                    'DeviceId': Variant('s', '1'),
+                    'Name': Variant('s', device['device_name']),
+                    'Vendor': Variant('s', device['vendor_name'] if device['vendor_name'] != '' else ''),
+                    'VendorId': Variant('s', device['vendor_id'] if device['vendor_id'] != '' else ''),
+                    'Version': Variant('s', device['version']),
+                    'Plugin': Variant('s', 'hybris'),
+                    'Protocol': Variant('s', 'hybris'),
+                    'Flags': Variant('t', 2),
+                    'Serial': Variant('s', device['serial'] if device['serial'] != '' else '')
+                }
+
+                self.props['Devices'].value.append(usb_array)
+
         with open('/proc/cmdline', 'r') as file:
             cmdline = file.read().strip()
 
@@ -448,11 +466,10 @@ class FWUPDInterface(ServiceInterface):
 
         return ''
 
-    def parse_pci_ids(self, vendor_id, device_id):
-        pci_ids_path = '/usr/share/misc/pci.ids'
+    def parse_ids(self, ids_path, vendor_id, device_id):
         vendor_name = None
         device_name = None
-        with open(pci_ids_path, 'r') as file:
+        with open(ids_path, 'r') as file:
             vendor_section = False
             for line in file:
                 if line.startswith(vendor_id.lower()):
@@ -468,6 +485,7 @@ class FWUPDInterface(ServiceInterface):
     def parse_pci_devices(self):
         pci_devices = []
         sys_bus_pci_path = '/sys/bus/pci/devices/'
+        pci_ids_path = '/usr/share/misc/pci.ids'
 
         if not os.path.exists(sys_bus_pci_path):
             return ""
@@ -494,13 +512,16 @@ class FWUPDInterface(ServiceInterface):
             except FileNotFoundError:
                 pass
 
+            if not device_info['vendor_id'] or not device_info['device_id']:
+                continue
+
             try:
                 with open(os.path.join(device_path, 'revision'), 'r') as file:
                     device_info['version'] = str(int(file.read().strip(), 16))
             except FileNotFoundError:
                 device_info['version'] = '1'
 
-            vendor_name, device_name = self.parse_pci_ids(device_info['vendor_id'], device_info['device_id'])
+            vendor_name, device_name = self.parse_ids(pci_ids_path, device_info['vendor_id'], device_info['device_id'])
             device_info['vendor_name'] = vendor_name if vendor_name else device_info['vendor_id']
             device_info['device_name'] = device_name if device_name else device_info['device_id']
             device_info['version'] = device_info['version'] if device_info['version'] else '1'
@@ -508,6 +529,62 @@ class FWUPDInterface(ServiceInterface):
             pci_devices.append(device_info)
 
         return pci_devices
+
+    def parse_usb_devices(self):
+        usb_devices = []
+        sys_bus_usb_path = '/sys/bus/usb/devices/'
+        usb_ids_path = '/usr/share/misc/usb.ids'
+
+        if not os.path.exists(sys_bus_usb_path):
+            return ""
+
+        for device_folder in os.listdir(sys_bus_usb_path):
+            device_path = os.path.join(sys_bus_usb_path, device_folder)
+            device_info = {
+                'vendor_id': '',
+                'device_id': '',
+                'vendor_name': '',
+                'device_name': '',
+                'version': '',
+                'serial' : ''
+            }
+
+            try:
+                with open(os.path.join(device_path, 'idVendor'), 'r') as file:
+                    device_info['vendor_id'] = file.read().strip()
+            except FileNotFoundError:
+                pass
+
+            try:
+                with open(os.path.join(device_path, 'idProduct'), 'r') as file:
+                    device_info['device_id'] = file.read().strip()
+            except FileNotFoundError:
+                pass
+
+            if not device_info['vendor_id'] or not device_info['device_id']:
+                continue
+
+            try:
+                with open(os.path.join(device_path, 'serial'), 'r') as file:
+                    device_info['serial'] = file.read().strip()
+            except FileNotFoundError:
+                pass
+
+            try:
+                with open(os.path.join(device_path, 'version'), 'r') as file:
+                    device_info['version'] = str(int(float(file.read().strip())))
+            except FileNotFoundError:
+                device_info['version'] = '1'
+
+            vendor_name, device_name = self.parse_ids(usb_ids_path, device_info['vendor_id'], device_info['device_id'])
+            device_info['vendor_name'] = vendor_name if vendor_name else device_info['vendor_id']
+            device_info['device_name'] = device_name if device_name else device_info['device_id']
+            device_info['version'] = device_info['version'] if device_info['version'] else '1'
+            device_info['serial'] = device_info['serial'] if device_info['serial'] else ''
+
+            usb_devices.append(device_info)
+
+        return usb_devices
 
     def parse_os_release(self, key):
         with open('/etc/os-release', 'r') as file:
