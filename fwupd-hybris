@@ -381,8 +381,7 @@ class FWUPDInterface(ServiceInterface):
 
     @method()
     def GetRemotes(self) -> 'aa{sv}':
-        # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.Internal', f'No remotes configured')
+        return []
 
     @method()
     def GetApprovedFirmware(self) -> 'as':
