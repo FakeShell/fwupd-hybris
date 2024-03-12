@@ -219,7 +219,8 @@ class FWUPDInterface(ServiceInterface):
                     'Version': Variant('s', device['version']),
                     'Plugin': Variant('s', 'hybris'),
                     'Protocol': Variant('s', 'hybris'),
-                    'Flags': Variant('t', 7)
+                    'Flags': Variant('t', 7),
+                    'Serial': Variant('s', device['serial'])
                 }
 
                 self.props['Devices'].value.append(scsi_array)
@@ -626,7 +627,8 @@ class FWUPDInterface(ServiceInterface):
             device_info = {
                 'vendor': '',
                 'device': '',
-                'version': ''
+                'version': '',
+                'serial': ''
             }
 
             try:
@@ -644,6 +646,15 @@ class FWUPDInterface(ServiceInterface):
             try:
                 with open(os.path.join(device_path, 'rev'), 'r') as file:
                     device_info['version'] = file.read().strip()
+            except FileNotFoundError:
+                pass
+
+            try:
+                with open(os.path.join(device_path, 'vpd_pg80'), 'rb') as file:
+                    binary_content = file.read().strip()
+
+                    # drop all non printable parts
+                    device_info['serial'] = ''.join(chr(byte) for byte in binary_content if 32 <= byte <= 126)
             except FileNotFoundError:
                 pass
 
