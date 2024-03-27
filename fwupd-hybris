@@ -110,6 +110,7 @@ class FWUPDInterface(ServiceInterface):
             self.props['Devices'].value.append(arr_bootloader)
 
         try:
+            modem_ver = ''
             bus = dbus.SystemBus()
             manager = dbus.Interface(bus.get_object('org.ofono', '/'), 'org.ofono.Manager')
             modems = manager.GetModems()
