@@ -111,6 +111,7 @@ class FWUPDInterface(ServiceInterface):
 
         try:
             modem_ver = ''
+            modem_rev = ''
             bus = dbus.SystemBus()
             manager = dbus.Interface(bus.get_object('org.ofono', '/'), 'org.ofono.Manager')
             modems = manager.GetModems()
@@ -126,7 +127,7 @@ class FWUPDInterface(ServiceInterface):
         except Exception as e:
             ofono = False
 
-        if ofono:
+        if ofono and modem_rev != '':
             arr_modem = {
                 'DeviceId': Variant('s', '1'),
                 'Name': Variant('s', modem_rev),
