@@ -2,19 +2,20 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (C) 2024 Bardia Moshiri <fakeshell@bardia.tech>
 
-from dbus_next.aio import MessageBus
-from dbus_next.service import (ServiceInterface,
-                               method, dbus_property, signal)
-from dbus_next.constants import PropertyAccess
-from dbus_next import Variant, DBusError, BusType
+from os import popen, listdir
+from os.path import exists, join
+from re import compile
+from platform import release, machine
+import sys
 
-import platform
 import asyncio
 import psutil
 import dbus
-import sys
-import os
-import re
+
+from dbus_next.aio import MessageBus
+from dbus_next.service import ServiceInterface, method, dbus_property
+from dbus_next.constants import PropertyAccess
+from dbus_next import Variant, DBusError, BusType
 
 class FWUPDInterface(ServiceInterface):
     def __init__(self, loop, bus):
@@ -73,7 +74,7 @@ class FWUPDInterface(ServiceInterface):
         codename = self.extract_prop('ro.product.vendor.name')
         self.props['HostProduct'] = Variant('s', codename.upper() if codename != '' else '')
 
-        if os.path.exists("/etc/machine-id"):
+        if exists("/etc/machine-id"):
             with open("/etc/machine-id", "r") as machine_id_file:
                 machine_id = machine_id_file.read()
         else:
@@ -92,7 +93,7 @@ class FWUPDInterface(ServiceInterface):
                         parts = line.split('=')
                         if len(parts) == 2:
                             bootloader_serialno = parts[1].strip().strip('"')
-        except Exception as e:
+        except Exception:
             bootloader = self.extract_prop('ro.bootloader')
 
         if bootloader:
@@ -115,7 +116,7 @@ class FWUPDInterface(ServiceInterface):
             bus = dbus.SystemBus()
             manager = dbus.Interface(bus.get_object('org.ofono', '/'), 'org.ofono.Manager')
             modems = manager.GetModems()
-            for path, properties in modems:
+            for properties in modems:
                 if "Revision" in properties:
                     modem_rev = properties["Revision"]
                 if "Serial" in properties:
@@ -146,14 +147,14 @@ class FWUPDInterface(ServiceInterface):
 
         for version in sensor_hal:
             command = f'binder-call -d /dev/hwbinder android.hardware.sensors@{version}::ISensors/default 1 reply i32 "[ {{ i32 i32 hstr hstr i32 }} ]"'
-            sensor_out = os.popen(command).read()
+            sensor_out = popen(command).read()
 
             if sensor_out.strip():
                 # print(f"Successful output with version {version}")
                 break
 
         if sensor_out.strip():
-            pattern = re.compile(r'{ (\d+) \d+ "([^"]+)"H "([^"]+)"H (\d+) }')
+            pattern = compile(r'{ (\d+) \d+ "([^"]+)"H "([^"]+)"H (\d+) }')
             matches = pattern.findall(sensor_out)
 
             if matches:
@@ -247,10 +248,10 @@ class FWUPDInterface(ServiceInterface):
         if codename:
             self.props['Metadata'].value['HostProduct'] = codename
 
-        kernel_version = platform.release()
+        kernel_version = release()
         self.props['Metadata'].value['KernelVersion'] = kernel_version
         self.props['Metadata'].value['RuntimeVersion(org.kernel)'] = kernel_version
-        cpu_arch = platform.machine()
+        cpu_arch = machine()
         self.props['Metadata'].value['CpuArchitecture'] = cpu_arch
         self.props['Metadata'].value['BootTime'] = str(int(psutil.boot_time()))
 
@@ -342,12 +343,12 @@ class FWUPDInterface(ServiceInterface):
     @method()
     def GetHostSecurityAttrs(self) -> 'aa{sv}':
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NotSupported', f'HSI support not enabled')
+        raise DBusError('org.freedesktop.fwupd.NotSupported', 'HSI support not enabled')
 
     @method()
     def GetHostSecurityEvents(self, limit: 'u') -> 'aa{sv}':
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NotSupported', f'HSI support not enabled')
+        raise DBusError('org.freedesktop.fwupd.NotSupported', 'HSI support not enabled')
 
     @method()
     def GetReportMetadata(self) -> 'a{ss}':
@@ -360,27 +361,27 @@ class FWUPDInterface(ServiceInterface):
     @method()
     def Install(self, id: 's', handle: 'h', options: 'a{sv}'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.Internal', f'unsupported feature')
+        raise DBusError('org.freedesktop.fwupd.Internal', 'unsupported feature')
 
     @method()
     def Verify(self, id: 's'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.Internal', f'invalid device ID: {id}')
+        raise DBusError('org.freedesktop.fwupd.Internal', 'invalid device ID: {id}')
 
     @method()
     def Unlock(self, id: 's'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.Internal', f'invalid device ID: {id}')
+        raise DBusError('org.freedesktop.fwupd.Internal', 'invalid device ID: {id}')
 
     @method()
     def Activate(self, id: 's'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.Internal', f'invalid device ID: {id}')
+        raise DBusError('org.freedesktop.fwupd.Internal', 'invalid device ID: {id}')
 
     @method()
     def GetResults(self, id: 's') -> 'a{sv}':
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NothingToDo', f'Failed to find {id} in history database: No devices found')
+        raise DBusError('org.freedesktop.fwupd.NothingToDo', 'Failed to find {id} in history database: No devices found')
 
     @method()
     def GetRemotes(self) -> 'aa{sv}':
@@ -409,27 +410,27 @@ class FWUPDInterface(ServiceInterface):
     @method()
     def ClearResults(self, id: 's'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NothingToDo', f'Failed to find {id} in history database: No devices found')
+        raise DBusError('org.freedesktop.fwupd.NothingToDo', 'Failed to find {id} in history database: No devices found')
 
     @method()
     def ModifyDevice(self, device_id: 's', key: 's', value: 's'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NotSupported', f'key {key} not supported')
+        raise DBusError('org.freedesktop.fwupd.NotSupported', 'key {key} not supported')
 
     @method()
     def ModifyConfig(self, key: 's', value: 's'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NotFound', f'key {key} not supported for [{value}]')
+        raise DBusError('org.freedesktop.fwupd.NotFound', 'key {key} not supported for [{value}]')
 
     @method()
     def UpdateMetadata(self, remote_id: 's', data: 'h', signature: 'h'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NotFound', f'remote {remote_id} not found')
+        raise DBusError('org.freedesktop.fwupd.NotFound', 'remote {remote_id} not found')
 
     @method()
     def ModifyRemote(self, remote_id: 's', key: 's', value: 's'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NotFound', f'key {key} not supported')
+        raise DBusError('org.freedesktop.fwupd.NotFound', 'key {key} not supported')
 
     @method()
     def FixHostSecurityAttr(self, appstream_id: 's'):
@@ -458,7 +459,7 @@ class FWUPDInterface(ServiceInterface):
     @method()
     def Uninhibit(self, inhibit_id: 's'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NotFound', f'Cannot find inhibit ID')
+        raise DBusError('org.freedesktop.fwupd.NotFound', 'Cannot find inhibit ID')
 
     @method()
     def Quit(self):
@@ -467,12 +468,12 @@ class FWUPDInterface(ServiceInterface):
     @method()
     def EmulationLoad(self, data: 'ay'):
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NotSupported', f'emulation is not allowed from config')
+        raise DBusError('org.freedesktop.fwupd.NotSupported', 'emulation is not allowed from config')
 
     @method()
     def EmulationSave(self) -> 'ay':
         # useless, this script is only used for debugging and logging for now.
-        raise DBusError('org.freedesktop.fwupd.NotSupported', f'emulation is not allowed from config')
+        raise DBusError('org.freedesktop.fwupd.NotSupported', 'emulation is not allowed from config')
 
     def extract_prop(self, prop):
         prop_files = [
@@ -486,11 +487,11 @@ class FWUPDInterface(ServiceInterface):
         ]
 
         for file in prop_files:
-            if os.path.exists(file):
+            if exists(file):
                 prop_file = file
                 break
 
-        with open(file, 'r') as f:
+        with open(prop_file, 'r') as f:
             for line in f:
                 if line.startswith(prop):
                     return line.split('=')[1].strip()
@@ -518,11 +519,11 @@ class FWUPDInterface(ServiceInterface):
         sys_bus_pci_path = '/sys/bus/pci/devices/'
         pci_ids_path = '/usr/share/misc/pci.ids'
 
-        if not os.path.exists(sys_bus_pci_path):
+        if not exists(sys_bus_pci_path):
             return ""
 
-        for device_folder in os.listdir(sys_bus_pci_path):
-            device_path = os.path.join(sys_bus_pci_path, device_folder)
+        for device_folder in listdir(sys_bus_pci_path):
+            device_path = join(sys_bus_pci_path, device_folder)
             device_info = {
                 'vendor_id': '',
                 'device_id': '',
@@ -532,13 +533,13 @@ class FWUPDInterface(ServiceInterface):
             }
 
             try:
-                with open(os.path.join(device_path, 'vendor'), 'r') as file:
+                with open(join(device_path, 'vendor'), 'r') as file:
                     device_info['vendor_id'] = file.read().strip()[2:]  # Remove leading '0x'
             except FileNotFoundError:
                 pass
 
             try:
-                with open(os.path.join(device_path, 'device'), 'r') as file:
+                with open(join(device_path, 'device'), 'r') as file:
                     device_info['device_id'] = file.read().strip()[2:]  # Remove leading '0x'
             except FileNotFoundError:
                 pass
@@ -547,7 +548,7 @@ class FWUPDInterface(ServiceInterface):
                 continue
 
             try:
-                with open(os.path.join(device_path, 'revision'), 'r') as file:
+                with open(join(device_path, 'revision'), 'r') as file:
                     device_info['version'] = str(int(file.read().strip(), 16))
             except FileNotFoundError:
                 device_info['version'] = '1'
@@ -566,11 +567,11 @@ class FWUPDInterface(ServiceInterface):
         sys_bus_usb_path = '/sys/bus/usb/devices/'
         usb_ids_path = '/usr/share/misc/usb.ids'
 
-        if not os.path.exists(sys_bus_usb_path):
+        if not exists(sys_bus_usb_path):
             return ""
 
-        for device_folder in os.listdir(sys_bus_usb_path):
-            device_path = os.path.join(sys_bus_usb_path, device_folder)
+        for device_folder in listdir(sys_bus_usb_path):
+            device_path = join(sys_bus_usb_path, device_folder)
             device_info = {
                 'vendor_id': '',
                 'device_id': '',
@@ -581,13 +582,13 @@ class FWUPDInterface(ServiceInterface):
             }
 
             try:
-                with open(os.path.join(device_path, 'idVendor'), 'r') as file:
+                with open(join(device_path, 'idVendor'), 'r') as file:
                     device_info['vendor_id'] = file.read().strip()
             except FileNotFoundError:
                 pass
 
             try:
-                with open(os.path.join(device_path, 'idProduct'), 'r') as file:
+                with open(join(device_path, 'idProduct'), 'r') as file:
                     device_info['device_id'] = file.read().strip()
             except FileNotFoundError:
                 pass
@@ -596,13 +597,13 @@ class FWUPDInterface(ServiceInterface):
                 continue
 
             try:
-                with open(os.path.join(device_path, 'serial'), 'r') as file:
+                with open(join(device_path, 'serial'), 'r') as file:
                     device_info['serial'] = file.read().strip()
             except FileNotFoundError:
                 pass
 
             try:
-                with open(os.path.join(device_path, 'version'), 'r') as file:
+                with open(join(device_path, 'version'), 'r') as file:
                     device_info['version'] = str(int(float(file.read().strip())))
             except FileNotFoundError:
                 device_info['version'] = '1'
@@ -621,11 +622,11 @@ class FWUPDInterface(ServiceInterface):
         scsi_devices = []
         sys_scsi_generic_path = '/sys/class/scsi_generic/'
 
-        if not os.path.exists(sys_scsi_generic_path):
+        if not exists(sys_scsi_generic_path):
             return ""
 
-        for device_folder in os.listdir(sys_scsi_generic_path):
-            device_path = os.path.join(sys_scsi_generic_path, device_folder, 'device')
+        for device_folder in listdir(sys_scsi_generic_path):
+            device_path = join(sys_scsi_generic_path, device_folder, 'device')
             device_info = {
                 'vendor': '',
                 'device': '',
@@ -634,25 +635,25 @@ class FWUPDInterface(ServiceInterface):
             }
 
             try:
-                with open(os.path.join(device_path, 'vendor'), 'r') as file:
+                with open(join(device_path, 'vendor'), 'r') as file:
                     device_info['vendor'] = file.read().strip()
             except FileNotFoundError:
                 pass
 
             try:
-                with open(os.path.join(device_path, 'model'), 'r') as file:
+                with open(join(device_path, 'model'), 'r') as file:
                     device_info['device'] = file.read().strip()
             except FileNotFoundError:
                 pass
 
             try:
-                with open(os.path.join(device_path, 'rev'), 'r') as file:
+                with open(join(device_path, 'rev'), 'r') as file:
                     device_info['version'] = file.read().strip()
             except FileNotFoundError:
                 pass
 
             try:
-                with open(os.path.join(device_path, 'vpd_pg80'), 'rb') as file:
+                with open(join(device_path, 'vpd_pg80'), 'rb') as file:
                     binary_content = file.read().strip()
 
                     # drop all non printable parts
