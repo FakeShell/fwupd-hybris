@@ -4,8 +4,8 @@
 
 from os import popen, listdir
 from os.path import exists, join
-from re import compile
 from platform import release, machine
+import re
 import sys
 
 import asyncio
@@ -154,7 +154,7 @@ class FWUPDInterface(ServiceInterface):
                 break
 
         if sensor_out.strip():
-            pattern = compile(r'{ (\d+) \d+ "([^"]+)"H "([^"]+)"H (\d+) }')
+            pattern = re.compile(r'{ (\d+) \d+ "([^"]+)"H "([^"]+)"H (\d+) }')
             matches = pattern.findall(sensor_out)
 
             if matches:
@@ -227,6 +227,23 @@ class FWUPDInterface(ServiceInterface):
                 }
 
                 self.props['Devices'].value.append(scsi_array)
+
+        hw_info_data = self.read_hw_info("/sys/class/hw_info/hw_info_data/hw_info_read")
+        if hw_info_data:
+            parsed_info = self.parse_hw_info(hw_info_data)
+            for section, device in parsed_info.items():
+                hw_info_array = {
+                    'DeviceId': Variant('s', '1'),
+                    'Name': Variant('s', f"{section} {device['chip']}" if device['chip'] != '' else section),
+                    'Vendor': Variant('s', device['vendor'] if device['vendor'] != '' else ''),
+                    'Version': Variant('s', device['id'] if device['id'] != '' else ''),
+                    'Plugin': Variant('s', 'hybris'),
+                    'Protocol': Variant('s', 'hybris'),
+                    'Flags': Variant('t', 7),
+                    'Serial': Variant('s', device['id'] if device['id'] != '' else '')
+                }
+
+                self.props['Devices'].value.append(hw_info_array)
 
         with open('/proc/cmdline', 'r') as file:
             cmdline = file.read().strip()
@@ -687,6 +704,38 @@ class FWUPDInterface(ServiceInterface):
         output = content.replace(b'\x00', b'\n').decode('utf-8').strip()
 
         return output.splitlines()[-1]
+
+    def read_hw_info(self, file_path):
+        try:
+            with open(file_path, 'r') as file:
+                return file.read()
+        except IOError as e:
+            print(f"Error reading file {file_path}: {e}")
+            return ""
+
+    def parse_hw_info(self, hw_info):
+        pattern = r'\[([^\]]+)\]:([\s\S]*?)(?=\n\[|\Z)'
+        matches = re.findall(pattern, hw_info, re.MULTILINE)
+
+        parsed_info = {}
+        for match in matches:
+            key = match[0].strip()
+            value = match[1].strip()
+            if key.lower() in ["battery", "flash", "flash list", "flash life", "audioparamversioninfo"]:
+                continue
+            details = {}
+            lines = value.split('\n')
+            for line in lines:
+                if 'chip:' in line:
+                    details['chip'] = line.split('chip:')[1].strip()
+                elif 'vendor:' in line:
+                    details['vendor'] = line.split('vendor:')[1].strip()
+                elif 'id:' in line:
+                    details['id'] = line.split('id:')[1].strip()
+
+            parsed_info[key] = details
+
+        return parsed_info
 
 async def main():
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
